@@ -1,6 +1,7 @@
 import time
 
 import httpx
+import requests_html
 from selectolax.parser import HTMLParser
 import fake_useragent
 from random import choice
@@ -85,7 +86,7 @@ def sw_setup(proxy):
     useragent = ua.random
     firefox_options = FirefoxOptions()
 
-    # chrome_options.add_argument('-headless')
+    # firefox_options.add_argument('-headless')
     firefox_options.add_argument('--no-sandbox')
     firefox_options.page_load_strategy = "eager"
     firefox_options.set_preference("general.useragent.override", useragent)
@@ -142,9 +143,11 @@ def get_headers(url, proxies):
     wait.until(ec.presence_of_element_located((By.CSS_SELECTOR, 'nav[aria-label="pagination"]')))
     request_list = driver.requests
     del driver.requests
+    driver.quit()
     result = dict()
     for i in request_list:
-        if i.headers['referer'] == 'https://www.stepstone.de/jobs/junior-sales?sort=2&action=sort_publish':
+        # print(i.headers)
+        if i.headers['sec-fetch-dest'] == 'document':
            for item in i.headers:
                result[item] = i.headers[item]
            break
@@ -152,7 +155,6 @@ def get_headers(url, proxies):
             continue
     # value = input("SCRIPT ENDED\n")
     return result
-    # driver.quit()
 
 def get_job_urls(url, headers, proxies):
     print("Getting job urls...")
@@ -164,9 +166,39 @@ def get_job_urls(url, headers, proxies):
         }
         print(proxies)
 
-        with httpx.Client(headers=headers, proxies=proxies, http2=True, follow_redirects=True) as client:
+        with httpx.Client(headers=headers, proxies=proxies, http2=True, follow_redirects=False) as client:
             response = client.get(url=next_url)
-        print(response.history)
+            print(response.history)
+        print(response.text)
+        job_tree = HTMLParser(response.text)
+        print(job_tree.css_first('title').text())
+        job_urls = list()
+        try:
+            parent_next_tree = job_tree.css_first('nav[aria-label="pagination"]')
+            next_url = parent_next_tree.css_first('a[aria-label="Nächste"]').attributes['href']
+            parent_job_tree = job_tree.css('article.resultlist-19kpq27')
+            for i in parent_job_tree:
+                job_url = i.css_first('a.resultlist-w3sgr').attributes['href']
+                job_urls.append(job_url)
+        except Exception as e:
+            print(e)
+            endofpage = True
+    return job_urls
+
+def get_job_urls2(url, headers, proxies):
+    print("Getting job urls...")
+    next_url = url
+    endofpage = False
+    while not endofpage:
+        proxies = {
+            "all://": f"http://{choice(proxies)}"
+        }
+        print(proxies)
+
+        with requests_html.HTMLSession(headers=headers, proxies=proxies, http2=True, follow_redirects=False) as client:
+            client.get(url=next_url)
+            client.html.render()
+
         print(response.text)
         job_tree = HTMLParser(response.text)
         print(job_tree.css_first('title').text())
