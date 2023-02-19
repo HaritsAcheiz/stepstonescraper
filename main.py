@@ -168,9 +168,7 @@ def get_job_urls(url, headers, proxies):
         }
         print(proxies)
 
-        cookie = {
-            headers['cookie']
-        }
+        cookie = headers['cookie']
 
         with httpx.Client(headers=headers, cookies=cookie, proxies=proxies, http2=True) as client:
             response = client.get(url=next_url)
