@@ -13,7 +13,6 @@ from selenium import webdriver
 from selenium.webdriver import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
-# from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -85,9 +84,10 @@ def sw_setup(proxy):
     ua = fake_useragent.UserAgent()
     useragent = ua.random
     firefox_options = FirefoxOptions()
-
     # firefox_options.add_argument('-headless')
     firefox_options.add_argument('--no-sandbox')
+    # firefox_options.add_argument("-profile")
+    # firefox_options.add_argument(r'C:\Users\Haritz\AppData\Roaming\Mozilla\Firefox\Profiles\7w9b4myx.default-release')
     firefox_options.page_load_strategy = "eager"
     firefox_options.set_preference("general.useragent.override", useragent)
     firefox_options.set_preference('network.proxy.type', 1)
@@ -136,15 +136,15 @@ def get_headers(url, proxies):
 
     wait = WebDriverWait(driver, 30)
     wait.until(ec.presence_of_element_located((By.CSS_SELECTOR, 'nav[aria-label="pagination"]')))
-    try:
-        wait.until(ec.element_to_be_clickable((By.ID, 'ccmgt_explicit_accept'))).click()
-    except:
-        print('no cookies')
-        pass
+    # try:
+    #     wait.until(ec.element_to_be_clickable((By.ID, 'ccmgt_explicit_accept'))).click()
+    # except:
+    #     print('no cookies')
+    #     pass
 
     request_list = driver.requests
     del driver.requests
-    driver.quit()
+    # driver.quit()
     result = dict()
     for i in request_list:
         print(i.headers)
@@ -161,16 +161,21 @@ def get_job_urls(url, headers, proxies):
     print("Getting job urls...")
     next_url = url
     endofpage = False
+    headers['user-agent'] = 'insomnia/2022.7.5'
     print(headers)
+
+    # cookies = (dict(i.split('=', 1) for i in headers['cookie'].split('; ')))
+    # print(cookies)
+    # selected_cookies = {'STEPSTONEV5LANG': 'de', '_abck': cookies['_abck']}
+    # selected_headers = {'user-agent': headers['user-agent'], 'cookie': headers['cookie']}
+
     while not endofpage:
         proxies = {
             "all://": f"http://{choice(proxies)}"
         }
         print(proxies)
 
-        cookie = headers['cookie']
-
-        with httpx.Client(headers=headers, cookies=cookie, proxies=proxies, http2=True) as client:
+        with httpx.Client(headers=headers, proxies=proxies) as client:
             response = client.get(url=next_url)
             print(response.history)
         print(response.text)
