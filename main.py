@@ -88,10 +88,6 @@ def sw_setup(proxy):
 
     # firefox_options.add_argument('-headless')
     firefox_options.add_argument('--no-sandbox')
-    firefox_options.("excludeSwitches", ["enable-automation"])
-    firefox_options.add_experimental_option('excludeSwitches', ['enable-logging'])
-    firefox_options.add_experimental_option('useAutomationExtension', False)
-    firefox_options.add_argument('--disable-blink-features=AutomationControlled')
     firefox_options.page_load_strategy = "eager"
     firefox_options.set_preference("general.useragent.override", useragent)
     firefox_options.set_preference('network.proxy.type', 1)
@@ -152,7 +148,7 @@ def get_headers(url, proxies):
     result = dict()
     for i in request_list:
         print(i.headers)
-        if i.headers['sec-fetch-dest'] == 'document' and i.headers['Host'] == 'www.stepstone.de':
+        if i.headers['sec-fetch-dest'] == 'document' and i.headers.get('cookie') is not None:
            for item in i.headers:
                result[item] = i.headers[item]
            break
