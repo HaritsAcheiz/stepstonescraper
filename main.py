@@ -88,6 +88,10 @@ def sw_setup(proxy):
 
     # firefox_options.add_argument('-headless')
     firefox_options.add_argument('--no-sandbox')
+    firefox_options.("excludeSwitches", ["enable-automation"])
+    firefox_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    firefox_options.add_experimental_option('useAutomationExtension', False)
+    firefox_options.add_argument('--disable-blink-features=AutomationControlled')
     firefox_options.page_load_strategy = "eager"
     firefox_options.set_preference("general.useragent.override", useragent)
     firefox_options.set_preference('network.proxy.type', 1)
@@ -134,20 +138,21 @@ def get_headers(url, proxies):
     driver.delete_all_cookies()
     driver.get(url)
 
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver, 30)
+    wait.until(ec.presence_of_element_located((By.CSS_SELECTOR, 'nav[aria-label="pagination"]')))
     try:
         wait.until(ec.element_to_be_clickable((By.ID, 'ccmgt_explicit_accept'))).click()
     except:
+        print('no cookies')
         pass
 
-    wait.until(ec.presence_of_element_located((By.CSS_SELECTOR, 'nav[aria-label="pagination"]')))
     request_list = driver.requests
     del driver.requests
     driver.quit()
     result = dict()
     for i in request_list:
-        # print(i.headers)
-        if i.headers['sec-fetch-dest'] == 'document':
+        print(i.headers)
+        if i.headers['sec-fetch-dest'] == 'document' and i.headers['Host'] == 'www.stepstone.de':
            for item in i.headers:
                result[item] = i.headers[item]
            break
@@ -160,13 +165,14 @@ def get_job_urls(url, headers, proxies):
     print("Getting job urls...")
     next_url = url
     endofpage = False
+    print(headers)
     while not endofpage:
         proxies = {
             "all://": f"http://{choice(proxies)}"
         }
         print(proxies)
 
-        with httpx.Client(headers=headers, proxies=proxies, http2=True, follow_redirects=False) as client:
+        with httpx.Client(headers=headers, proxies=proxies, http2=True) as client:
             response = client.get(url=next_url)
             print(response.history)
         print(response.text)
@@ -197,7 +203,7 @@ def get_job_urls2(url, headers, proxies):
 
         with requests_html.HTMLSession(headers=headers, proxies=proxies, http2=True, follow_redirects=False) as client:
             client.get(url=next_url)
-            client.html.render()
+            response = client.html.render()
 
         print(response.text)
         job_tree = HTMLParser(response.text)
