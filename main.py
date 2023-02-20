@@ -207,6 +207,7 @@ def get_job_urls2(url, ua, cookies_list, proxies):
     for item in cookies_list:
         cookies[item['name']] = item['value']
 
+    job_urls = list()
     while not endofpage:
         formated_proxies = {
             "http": f"http://{choice(proxies)}",
@@ -221,9 +222,6 @@ def get_job_urls2(url, ua, cookies_list, proxies):
         client = HTMLSession()
         response = client.get(url=next_url, cookies=cookies, proxies=formated_proxies, timeout=(3,30), allow_redirects=True)
         response.html.render(sleep=5)
-        print(response.html.find('title', first=True).text)
-        print(response.html.html)
-        job_urls = list()
         try:
             parent_next_tree = response.html.find('nav[aria-label="pagination"]', first=True)
             next_url = parent_next_tree.find('a[aria-label="Nächste"]', first=True).attrs['href']
