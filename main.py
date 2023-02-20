@@ -209,11 +209,12 @@ def get_job_urls2(url, ua, cookies_list, proxies):
 
     job_urls = list()
     while not endofpage:
+        selected_proxy = choice(proxies)
         formated_proxies = {
-            "http": f"http://{choice(proxies)}",
-            "https": f"http://{choice(proxies)}"
+            "http": f"http://{selected_proxy}",
+            "https": f"http://{selected_proxy}"
         }
-        print(formated_proxies)
+        print(selected_proxy)
 
         # headers = {
         #     'user-agent': ua
