@@ -1,6 +1,8 @@
 import time
+from socket import socket
 
 import httpx
+from requests import ConnectTimeout
 from selectolax.parser import HTMLParser
 import fake_useragent
 from random import choice
@@ -209,32 +211,36 @@ def get_job_urls2(url, ua, cookies_list, proxies):
 
     job_urls = list()
     while not endofpage:
-        selected_proxy = choice(proxies)
-        formated_proxies = {
-            "http": f"http://{selected_proxy}",
-            "https": f"http://{selected_proxy}"
-        }
-        print(selected_proxy)
-
-        # headers = {
-        #     'user-agent': ua
-        # }
-
-        client = HTMLSession()
-        response = client.get(url=next_url, cookies=cookies, proxies=formated_proxies, timeout=(3,30), allow_redirects=True)
-        response.html.render(sleep=5)
         try:
-            parent_next_tree = response.html.find('nav[aria-label="pagination"]', first=True)
-            next_url = parent_next_tree.find('a[aria-label="Nächste"]', first=True).attrs['href']
-            parent_job_tree = response.html.find('article.resultlist-19kpq27')
-            for i in parent_job_tree:
-                job_url = i.find('a.resultlist-w3sgr', first=True).attrs['href']
-                print(job_url)
-                job_urls.append(job_url)
-                print(f"{len(job_urls)} job url(s) are collected")
-        except Exception as e:
-            print(e)
-            endofpage = True
+            selected_proxy = choice(proxies)
+            formated_proxies = {
+                "http": f"http://{selected_proxy}",
+                "https": f"http://{selected_proxy}"
+            }
+            print(selected_proxy)
+
+            # headers = {
+            #     'user-agent': ua
+            # }
+
+            client = HTMLSession()
+            response = client.get(url=next_url, cookies=cookies, proxies=formated_proxies, timeout=(3,30), allow_redirects=True)
+            response.html.render(sleep=5)
+            try:
+                parent_next_tree = response.html.find('nav[aria-label="pagination"]', first=True)
+                next_url = parent_next_tree.find('a[aria-label="Nächste"]', first=True).attrs['href']
+                parent_job_tree = response.html.find('article.resultlist-19kpq27')
+                for i in parent_job_tree:
+                    job_url = i.find('a.resultlist-w3sgr', first=True).attrs['href']
+                    print(job_url)
+                    job_urls.append(job_url)
+                    print(f"{len(job_urls)} job url(s) are collected")
+            except Exception as e:
+                print(e)
+                endofpage = True
+        except ConnectTimeout:
+            continue
+    print('get jobs urls completed')
     return job_urls
 
 def main():
