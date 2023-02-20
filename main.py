@@ -1,7 +1,6 @@
 import time
 
 import httpx
-import requests_html
 from selectolax.parser import HTMLParser
 import fake_useragent
 from random import choice
@@ -164,7 +163,7 @@ def get_headers(url, proxies):
     # value = input("SCRIPT ENDED\n")
     return result
 
-def get_job_urls(url, cookies_list, proxies):
+def get_job_urls(url, ua, cookies_list, proxies):
     print("Getting job urls...")
     next_url = url
     endofpage = False
@@ -172,18 +171,22 @@ def get_job_urls(url, cookies_list, proxies):
     for item in cookies_list:
         cookies[item['name']] = item['value']
 
+    headers={
+        'user-agent': ua
+    }
+
+    job_urls = list()
     while not endofpage:
         proxies = {
             "all://": f"http://{choice(proxies)}"
         }
         print(proxies)
 
-        with httpx.Client(cookies=cookies, proxies=proxies, timeout=(3,30)) as client:
+        with httpx.Client(cookies=cookies, headers=headers, proxies=proxies, timeout=(3,30)) as client:
             response = client.get(url=next_url)
         print(response.text)
         job_tree = HTMLParser(response.text)
         print(job_tree.css_first('title').text())
-        job_urls = list()
         try:
             parent_next_tree = job_tree.css_first('nav[aria-label="pagination"]')
             next_url = parent_next_tree.css_first('a[aria-label="Nächste"]').attributes['href']
@@ -205,19 +208,19 @@ def get_job_urls2(url, ua, cookies_list, proxies):
         cookies[item['name']] = item['value']
 
     while not endofpage:
-        proxies = {
+        formated_proxies = {
             "http": f"http://{choice(proxies)}",
             "https": f"http://{choice(proxies)}"
         }
-        print(proxies)
+        print(formated_proxies)
 
         # headers = {
         #     'user-agent': ua
         # }
 
         client = HTMLSession()
-        response = client.get(url=next_url, cookies=cookies, proxies=proxies, timeout=(3,30), allow_redirects=True)
-        response.html.render(sleep=10)
+        response = client.get(url=next_url, cookies=cookies, proxies=formated_proxies, timeout=(3,30), allow_redirects=True)
+        response.html.render(sleep=5)
         print(response.html.find('title', first=True).text)
         print(response.html.html)
         job_urls = list()
@@ -227,8 +230,9 @@ def get_job_urls2(url, ua, cookies_list, proxies):
             parent_job_tree = response.html.find('article.resultlist-19kpq27')
             for i in parent_job_tree:
                 job_url = i.find('a.resultlist-w3sgr', first=True).attrs['href']
-                print(job_urls)
+                print(job_url)
                 job_urls.append(job_url)
+                print(f"{len(job_urls)} job url(s) are collected")
         except Exception as e:
             print(e)
             endofpage = True
@@ -241,10 +245,11 @@ def main():
                '192.126.253.134:8800',
                '192.126.253.59:8800',
                '192.126.250.223:8800']
-    url = 'https://www.stepstone.de/jobs/junior-sales?sort=2&action=sort_publish'
+    url = 'https://www.stepstone.de/jobs/junior-sales?page=1&sort=2&action=sort_publish'
 
     cookies, ua = get_cookies(url, proxies=proxies)
     job_urls = get_job_urls2(url, ua=ua, cookies_list=cookies, proxies=proxies)
+    print(job_urls)
 
 
 if __name__ == '__main__':
