@@ -164,17 +164,13 @@ def get_headers(url, proxies):
     # value = input("SCRIPT ENDED\n")
     return result
 
-def get_job_urls(url, headers, proxies):
+def get_job_urls(url, cookies_list, proxies):
     print("Getting job urls...")
     next_url = url
     endofpage = False
-    headers['user-agent'] = 'insomnia/2022.7.5'
-    print(headers)
-
-    # cookies = (dict(i.split('=', 1) for i in headers['cookie'].split('; ')))
-    # print(cookies)
-    # selected_cookies = {'STEPSTONEV5LANG': 'de', '_abck': cookies['_abck']}
-    # selected_headers = {'user-agent': headers['user-agent'], 'cookie': headers['cookie']}
+    cookies = dict()
+    for item in cookies_list:
+        cookies[item['name']] = item['value']
 
     while not endofpage:
         proxies = {
@@ -182,9 +178,8 @@ def get_job_urls(url, headers, proxies):
         }
         print(proxies)
 
-        with httpx.Client(headers=headers, proxies=proxies) as client:
+        with httpx.Client(cookies=cookies, proxies=proxies, timeout=(3,30)) as client:
             response = client.get(url=next_url)
-            print(response.history)
         print(response.text)
         job_tree = HTMLParser(response.text)
         print(job_tree.css_first('title').text())
@@ -228,7 +223,7 @@ def get_job_urls2(url, ua, cookies_list, proxies):
         job_urls = list()
         try:
             parent_next_tree = response.html.find('nav[aria-label="pagination"]', first=True)
-            next_url = parent_next_tree.find('a[aria-label="Nächste"]').attrs['href']
+            next_url = parent_next_tree.find('a[aria-label="Nächste"]', first=True).attrs['href']
             parent_job_tree = response.html.find('article.resultlist-19kpq27')
             for i in parent_job_tree:
                 job_url = i.find('a.resultlist-w3sgr', first=True).attrs['href']
@@ -247,13 +242,10 @@ def main():
                '192.126.253.59:8800',
                '192.126.250.223:8800']
     url = 'https://www.stepstone.de/jobs/junior-sales?sort=2&action=sort_publish'
-    # header = get_headers(url, proxies=proxies)
-    # job_urls = get_job_urls(url, headers=header, proxies=proxies)
-    # print(job_urls)
 
     cookies, ua = get_cookies(url, proxies=proxies)
     job_urls = get_job_urls2(url, ua=ua, cookies_list=cookies, proxies=proxies)
-    print(job_urls)
+
 
 if __name__ == '__main__':
     main()
