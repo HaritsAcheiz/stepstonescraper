@@ -18,6 +18,8 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 from seleniumwire.webdriver import Firefox, FirefoxOptions
 
+from requests_html import HTMLSession
+
 @dataclass
 class Company:
     name: str
@@ -61,10 +63,11 @@ def webdriver_setup(proxy = None):
     useragent = ua.firefox
     firefox_options = Options()
 
-    # firefox_options.add_argument('-headless')
+    firefox_options.add_argument('-headless')
     firefox_options.add_argument('--no-sandbox')
     firefox_options.page_load_strategy = "eager"
-
+    firefox_options.add_argument('-profile')
+    firefox_options.add_argument(r'C:\Users\Haritz\AppData\Roaming\Mozilla\Firefox\Profiles\7w9b4myx.default-release')
     firefox_options.set_preference("general.useragent.override", useragent)
     firefox_options.set_preference('network.proxy.type', 1)
     firefox_options.set_preference('network.proxy.socks', ip)
@@ -75,6 +78,8 @@ def webdriver_setup(proxy = None):
     firefox_options.set_preference('network.proxy.http_port', int(port))
     firefox_options.set_preference('network.proxy.ssl', ip)
     firefox_options.set_preference('network.proxy.ssl_port', int(port))
+    firefox_options.set_preference('dom.webdriver.enable', False)
+    firefox_options.set_preference('useAutomationExtension', False)
 
     driver = webdriver.Firefox(options=firefox_options)
     return driver
@@ -118,9 +123,11 @@ def get_cookies(url, proxies):
     driver = webdriver_setup(proxy)
     driver.delete_all_cookies()
     driver.get(url)
-    wait = WebDriverWait(driver, 30)
-    wait.until(ec.presence_of_element_located((By.CSS_SELECTOR, 'input[data-at="searchbar-keyword-input"]')))
+    wait = WebDriverWait(driver, 10)
+    wait.until(ec.presence_of_element_located((By.CSS_SELECTOR, 'nav[aria-label="pagination"]')))
     cookies = driver.get_cookies()
+    for cookie in cookies:
+        print(f"{cookie['name']}: {cookie['value']}")
     ua = driver.execute_script("return navigator.userAgent")
     driver.quit()
     return cookies, ua
@@ -194,30 +201,38 @@ def get_job_urls(url, headers, proxies):
             endofpage = True
     return job_urls
 
-def get_job_urls2(url, headers, proxies):
+def get_job_urls2(url, ua, cookies_list, proxies):
     print("Getting job urls...")
     next_url = url
     endofpage = False
+    cookies = dict()
+    for item in cookies_list:
+        cookies[item['name']] = item['value']
+
     while not endofpage:
         proxies = {
-            "all://": f"http://{choice(proxies)}"
+            "http": f"http://{choice(proxies)}",
+            "https": f"http://{choice(proxies)}"
         }
         print(proxies)
 
-        with requests_html.HTMLSession(headers=headers, proxies=proxies, http2=True, follow_redirects=False) as client:
-            client.get(url=next_url)
-            response = client.html.render()
+        # headers = {
+        #     'user-agent': ua
+        # }
 
-        print(response.text)
-        job_tree = HTMLParser(response.text)
-        print(job_tree.css_first('title').text())
+        client = HTMLSession()
+        response = client.get(url=next_url, cookies=cookies, proxies=proxies, timeout=(3,30), allow_redirects=True)
+        response.html.render(sleep=10)
+        print(response.html.find('title', first=True).text)
+        print(response.html.html)
         job_urls = list()
         try:
-            parent_next_tree = job_tree.css_first('nav[aria-label="pagination"]')
-            next_url = parent_next_tree.css_first('a[aria-label="Nächste"]').attributes['href']
-            parent_job_tree = job_tree.css('article.resultlist-19kpq27')
+            parent_next_tree = response.html.find('nav[aria-label="pagination"]', first=True)
+            next_url = parent_next_tree.find('a[aria-label="Nächste"]').attrs['href']
+            parent_job_tree = response.html.find('article.resultlist-19kpq27')
             for i in parent_job_tree:
-                job_url = i.css_first('a.resultlist-w3sgr').attributes['href']
+                job_url = i.find('a.resultlist-w3sgr', first=True).attrs['href']
+                print(job_urls)
                 job_urls.append(job_url)
         except Exception as e:
             print(e)
@@ -232,8 +247,12 @@ def main():
                '192.126.253.59:8800',
                '192.126.250.223:8800']
     url = 'https://www.stepstone.de/jobs/junior-sales?sort=2&action=sort_publish'
-    header = get_headers(url, proxies=proxies)
-    job_urls = get_job_urls(url, headers=header, proxies=proxies)
+    # header = get_headers(url, proxies=proxies)
+    # job_urls = get_job_urls(url, headers=header, proxies=proxies)
+    # print(job_urls)
+
+    cookies, ua = get_cookies(url, proxies=proxies)
+    job_urls = get_job_urls2(url, ua=ua, cookies_list=cookies, proxies=proxies)
     print(job_urls)
 
 if __name__ == '__main__':
