@@ -92,6 +92,31 @@ def webdriver_setup(proxy = None):
     driver = webdriver.Firefox(options=firefox_options)
     return driver
 
+def webdriver_setup2(proxy, useragent):
+    ip, port = proxy.split(sep=':')
+
+    firefox_options = Options()
+    firefox_options.add_argument('-headless')
+    firefox_options.add_argument('--no-sandbox')
+    firefox_options.page_load_strategy = "eager"
+    firefox_options.add_argument('-profile')
+    firefox_options.add_argument(r'C:\Users\Haritz\AppData\Roaming\Mozilla\Firefox\Profiles\7w9b4myx.default-release')
+    firefox_options.set_preference("general.useragent.override", useragent)
+    firefox_options.set_preference('network.proxy.type', 1)
+    firefox_options.set_preference('network.proxy.socks', ip)
+    firefox_options.set_preference('network.proxy.socks_port', int(port))
+    firefox_options.set_preference('network.proxy.socks_version', 4)
+    firefox_options.set_preference('network.proxy.socks_remote_dns', True)
+    firefox_options.set_preference('network.proxy.http', ip)
+    firefox_options.set_preference('network.proxy.http_port', int(port))
+    firefox_options.set_preference('network.proxy.ssl', ip)
+    firefox_options.set_preference('network.proxy.ssl_port', int(port))
+    firefox_options.set_preference('dom.webdriver.enable', False)
+    firefox_options.set_preference('useAutomationExtension', False)
+
+    driver = webdriver.Firefox(options=firefox_options)
+    return driver
+
 # def sw_setup(proxy):
 #     ip, port = proxy.split(sep=':')
 #     ua = fake_useragent.UserAgent()
@@ -261,6 +286,14 @@ def get_job_urls3(url, proxies):
     next_url = url
     last_url = None
     job_urls = list()
+    ua = fake_useragent.UserAgent()
+    while 1:
+        useragent = ua.random
+        if 'Windows' in useragent:
+            print(useragent)
+            break
+        else:
+            continue
     while 1:
         if last_url == next_url:
             break
@@ -269,11 +302,11 @@ def get_job_urls3(url, proxies):
             while trials < 3:
                 try:
                     proxy = choice(proxies)
-                    driver = webdriver_setup(proxy)
+                    driver = webdriver_setup2(proxy=proxy, useragent=useragent)
                     # driver.maximize_window()
                     driver.fullscreen_window()
                     driver.delete_all_cookies()
-                    driver.get(url)
+                    driver.get(next_url)
                     wait = WebDriverWait(driver, 10)
                     wait.until(ec.presence_of_element_located((By.CSS_SELECTOR, 'nav[aria-label="pagination"]')))
                     html = driver.page_source
@@ -290,6 +323,15 @@ def get_job_urls3(url, proxies):
                         print(f"{len(job_urls)} job url(s) are collected")
                 except Exception as e:
                     print(e)
+                    driver.quit()
+                    ua = fake_useragent.UserAgent()
+                    while 1:
+                        useragent = ua.random
+                        if 'Windows' in useragent:
+                            print(useragent)
+                            break
+                        else:
+                            continue
                     trials += 1
     print('get jobs urls completed')
     return job_urls
